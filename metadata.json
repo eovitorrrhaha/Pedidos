@@ -1,0 +1,7 @@
+{
+  "name": "LuthierFlow - Workshop Manager",
+  "description": "A professional service order management system for musical instrument workshops, featuring order tracking, automated OCR from handwritten notes, and full instrument service checklists.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
