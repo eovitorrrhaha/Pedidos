@@ -1,20 +1,34 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Guitar, ShoppingBag, UserCheck, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Guitar, UserCheck, ClipboardList, Loader2 } from 'lucide-react';
 import { db } from '../services/db';
 import { AppSettings, Luthier } from '../types';
+import { INITIAL_SETTINGS } from '../constants';
 
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState<AppSettings>(db.getSettings());
+  const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
   const [newBrand, setNewBrand] = useState('');
   const [newLuthier, setNewLuthier] = useState({ name: '', color: '#ffffff' });
   const [newService, setNewService] = useState({ description: '', price: 0 });
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
-    db.saveSettings(settings);
-    alert("Configurações salvas com sucesso!");
+  useEffect(() => {
+    const load = async () => {
+      const fetched = await db.getSettings();
+      setSettings(fetched);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await db.saveSettings(settings);
+    setSaving(false);
+    alert("Configurações sincronizadas na nuvem!");
   };
 
   const addLuthier = () => {
@@ -47,19 +61,25 @@ const SettingsPage: React.FC = () => {
     setSettings({ ...settings, predefinedServices: updated });
   };
 
+  if (loading) return <div className="h-40 flex items-center justify-center text-white/20 uppercase font-black">Carregando Ajustes...</div>;
+
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-24">
       <div className="flex items-center justify-between">
-        <button onClick={() => navigate('/')} className="p-2 text-white/40 hover:text-white"><ArrowLeft /></button>
-        <h1 className="text-xl font-black uppercase tracking-tighter">Ajustes</h1>
-        <button onClick={handleSave} className="bg-white text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-          <Save size={16} /> Salvar Tudo
+        <button onClick={() => navigate('/')} className="p-2 text-white/40 hover:text-white transition-colors"><ArrowLeft /></button>
+        <h1 className="text-xl font-black uppercase tracking-tighter">Ajustes da Oficina</h1>
+        <button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="bg-white text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+        >
+          {saving ? <Loader2 className="animate-spin" size={14} /> : <Save size={16} />}
+          Salvar na Nuvem
         </button>
       </div>
 
-      {/* EQUIPE */}
       <section className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-6">
-        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2"><UserCheck size={18} /> Equipe / Luthiers</label>
+        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2"><UserCheck size={18} /> Equipe</label>
         <div className="space-y-3">
           {settings.luthiers.map((l) => (
             <div key={l.id} className="flex items-center justify-between p-4 bg-black border border-white/10 rounded-2xl">
@@ -67,13 +87,13 @@ const SettingsPage: React.FC = () => {
                 <div className="w-4 h-4 rounded-full" style={{ backgroundColor: l.color }} />
                 <span className="font-bold text-white uppercase text-xs">{l.name}</span>
               </div>
-              <button onClick={() => removeLuthier(l.id)} className="text-white/20 hover:text-white"><Trash2 size={16} /></button>
+              <button onClick={() => removeLuthier(l.id)} className="text-white/20 hover:text-white transition-colors"><Trash2 size={16} /></button>
             </div>
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 border border-white/5 rounded-3xl bg-black/40">
           <input 
-            placeholder="Nome do Luthier"
+            placeholder="Nome"
             className="bg-black border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-white"
             value={newLuthier.name}
             onChange={e => setNewLuthier({ ...newLuthier, name: e.target.value })}
@@ -85,28 +105,27 @@ const SettingsPage: React.FC = () => {
               value={newLuthier.color}
               onChange={e => setNewLuthier({ ...newLuthier, color: e.target.value })}
             />
-            <button onClick={addLuthier} className="flex-1 bg-white text-black rounded-xl text-[10px] font-black uppercase">Adicionar</button>
+            <button onClick={addLuthier} className="flex-1 bg-white text-black rounded-xl text-[10px] font-black uppercase">Add</button>
           </div>
         </div>
       </section>
 
-      {/* CONFIGURAÇÃO DE SERVIÇOS */}
       <section className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-6">
-        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2"><ClipboardList size={18} /> Configuração de Serviços</label>
+        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2"><ClipboardList size={18} /> Serviços Padrão</label>
         <div className="space-y-3">
           {settings.predefinedServices.map((s, i) => (
             <div key={i} className="flex items-center justify-between p-4 bg-black border border-white/10 rounded-2xl">
               <div>
                 <span className="font-bold text-white uppercase text-xs block">{s.description}</span>
-                <span className="text-[10px] font-black text-white/40 uppercase">Preço Padrão: R$ {s.price}</span>
+                <span className="text-[10px] font-black text-white/40 uppercase">R$ {s.price}</span>
               </div>
-              <button onClick={() => removePredefinedService(i)} className="text-white/20 hover:text-white"><Trash2 size={16} /></button>
+              <button onClick={() => removePredefinedService(i)} className="text-white/20 hover:text-white transition-colors"><Trash2 size={16} /></button>
             </div>
           ))}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 border border-white/5 rounded-3xl bg-black/40">
           <input 
-            placeholder="Nome do Serviço"
+            placeholder="Serviço"
             className="md:col-span-2 bg-black border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-white"
             value={newService.description}
             onChange={e => setNewService({ ...newService, description: e.target.value })}
@@ -115,7 +134,7 @@ const SettingsPage: React.FC = () => {
             <input 
               type="number"
               placeholder="R$"
-              className="w-20 bg-black border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:border-white"
+              className="w-20 bg-black border border-white/10 rounded-xl px-3 py-2 text-sm outline-none"
               value={newService.price || ''}
               onChange={e => setNewService({ ...newService, price: Number(e.target.value) })}
             />
@@ -124,9 +143,8 @@ const SettingsPage: React.FC = () => {
         </div>
       </section>
 
-      {/* MARCAS */}
       <section className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-6">
-        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2"><Guitar size={18} /> Gestão de Marcas</label>
+        <label className="text-[10px] font-black text-white/40 uppercase tracking-widest flex items-center gap-2"><Guitar size={18} /> Marcas</label>
         <div className="flex flex-wrap gap-2">
           {settings.brands.map((b, i) => (
             <div key={i} className="flex items-center gap-2 bg-black border border-white/10 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase text-white/60">
@@ -142,14 +160,14 @@ const SettingsPage: React.FC = () => {
         <div className="flex gap-2">
           <input 
             placeholder="Nova marca..."
-            className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-2 text-sm outline-none"
+            className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-white"
             value={newBrand}
             onChange={e => setNewBrand(e.target.value)}
           />
           <button onClick={() => {
             if (newBrand) setSettings({...settings, brands: [...settings.brands, newBrand]});
             setNewBrand('');
-          }} className="bg-white text-black p-2 rounded-xl"><Plus/></button>
+          }} className="bg-white text-black p-2 rounded-xl transition-transform active:scale-95"><Plus/></button>
         </div>
       </section>
     </div>

@@ -1,19 +1,29 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, ArrowRight, Guitar, Clock, CheckCircle2, Package, History } from 'lucide-react';
+import { Plus, Search, ArrowRight, Guitar, Clock, CheckCircle2, History, Loader2 } from 'lucide-react';
 import { db } from '../services/db';
 import { ServiceOrder, OrderStatus, AppSettings } from '../types';
-import { STATUS_LABELS } from '../constants';
+import { INITIAL_SETTINGS } from '../constants';
 
 const Dashboard: React.FC = () => {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
-  const [settings, setSettings] = useState<AppSettings>(db.getSettings());
+  const [settings, setSettings] = useState<AppSettings>(INITIAL_SETTINGS);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setOrders(db.getOrders());
-    setSettings(db.getSettings());
+    const loadData = async () => {
+      setLoading(true);
+      const [fetchedOrders, fetchedSettings] = await Promise.all([
+        db.getOrders(),
+        db.getSettings()
+      ]);
+      setOrders(fetchedOrders);
+      setSettings(fetchedSettings);
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
   const filteredOrders = useMemo(() => {
@@ -85,6 +95,15 @@ const Dashboard: React.FC = () => {
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin text-white/20" size={40} />
+        <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Sincronizando com a Nuvem...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10 pb-20">
